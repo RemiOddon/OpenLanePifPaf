@@ -2,7 +2,7 @@
 Convert json files of OpenLane into json file with COCO format
 
 Use this command to convert the Openlane dataset :
-python3 -m openpifpaf.plugins.openlane.openlane_to_coco --dir_data=/work/scitas-share/datasets/Vita/civil-459/OpenLane/raw --dir_out=/home/oddon/data-openlane-uv
+python3 -m openpifpaf.plugins.openlane.openlane_to_coco --dir_data=/work/scitas-share/datasets/Vita/civil-459/OpenLane/raw --dir_out=/home/oddon/data-openlane
 """
 
 import os
