@@ -16,7 +16,7 @@ NUMBER_KEYPOINTS = 25
 
 LANE_KEYPOINTS = [str(x) for x in range(1,NUMBER_KEYPOINTS+1)]
 
-LANE_SKELETON = [(str(x), str(x+1)) for x in range(1,NUMBER_KEYPOINTS)]
+LANE_SKELETON = [(x, x+1) for x in range(1,NUMBER_KEYPOINTS)]
 
 LANE_SIGMAS = [0.05] * NUMBER_KEYPOINTS # !!!! 0.05 defined like in for apollo dataset but does it make sense ??
 

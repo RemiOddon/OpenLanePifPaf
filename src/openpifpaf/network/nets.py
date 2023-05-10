@@ -5,10 +5,11 @@ LOG = logging.getLogger(__name__)
 
 
 class Shell(torch.nn.Module):
-    def __init__(self, base_net, head_nets, *,
-                 process_input=None, process_heads=None):
+    def __init__(self, depth_net, base_net, head_nets, *,
+                 process_input=None, process_heads=None):#DLAV
         super().__init__()
 
+        self.depth_net=depth_net#DLAV
         self.base_net = base_net
         self.head_nets = None
         self.process_input = process_input
@@ -33,6 +34,8 @@ class Shell(torch.nn.Module):
         self.head_nets = head_nets
 
     def forward(self, image_batch, head_mask=None):
+        image_batch = torch.cat((image_batch, self.depth_net(image_batch)), dim=1)#DLAV
+
         if self.process_input is not None:
             image_batch = self.process_input(image_batch)
 

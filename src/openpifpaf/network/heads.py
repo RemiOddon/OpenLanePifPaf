@@ -287,7 +287,7 @@ class CompositeField4(HeadNetwork):
         self.dropout = torch.nn.Dropout2d(p=self.dropout_p)
 
         # convolution
-        self.n_components = 1 + meta.n_confidences + meta.n_vectors * 2 + meta.n_scales
+        self.n_components = 1 + meta.n_confidences + meta.n_vectors * 3 + meta.n_scales#DLAV
         self.conv = torch.nn.Conv2d(
             in_features, meta.n_fields * self.n_components * (meta.upsample_stride ** 2),
             kernel_size, padding=padding, dilation=dilation,
@@ -369,11 +369,11 @@ class CompositeField4(HeadNetwork):
                 for i, do_offset in enumerate(self.vector_offsets):
                     if not do_offset:
                         continue
-                    reg_x = x[:, :, first_reg_feature + i * 2:first_reg_feature + (i + 1) * 2]
+                    reg_x = x[:, :, first_reg_feature + i * 3:first_reg_feature + (i + 1) * 3]#DLAV
                     reg_x.add_(index_field)
 
             # scale
-            first_scale_feature = 1 + self.n_confidences + self.n_vectors * 2
+            first_scale_feature = 1 + self.n_confidences + self.n_vectors * 3#DLAV
             scales_x = x[:, :, first_scale_feature:first_scale_feature + self.n_scales]
             scales_x[:] = torch.nn.functional.softplus(scales_x)
         elif not self.training and not self.inplace_ops:
@@ -392,7 +392,7 @@ class CompositeField4(HeadNetwork):
             # regressions x
             first_reg_feature = 1 + self.n_confidences
             regs_x = [
-                x[:, first_reg_feature + i * 2:first_reg_feature + (i + 1) * 2]
+                x[:, first_reg_feature + i * 3:first_reg_feature + (i + 1) * 3]#DLAV
                 for i in range(self.n_vectors)
             ]
             # regressions x: add index
@@ -404,7 +404,7 @@ class CompositeField4(HeadNetwork):
                       for reg_x, do_offset in zip(regs_x, self.vector_offsets)]
 
             # scale
-            first_scale_feature = 1 + self.n_confidences + self.n_vectors * 2
+            first_scale_feature = 1 + self.n_confidences + self.n_vectors * 3#DLAV
             scales_x = x[:, first_scale_feature:first_scale_feature + self.n_scales]
             scales_x = torch.nn.functional.softplus(scales_x)
 

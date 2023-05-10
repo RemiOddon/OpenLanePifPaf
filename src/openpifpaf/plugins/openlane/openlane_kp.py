@@ -23,6 +23,15 @@ import openpifpaf.transforms
 #from .constants import get_constants, training_weights_local_centrality
 from ..apollocar3d.metrics import MeanPixelError
 from ..coco.dataset import CocoDataset
+from .constants import (
+    LANE_CATEGORIES,
+    LANE_KEYPOINTS,
+    LANE_SKELETON,
+    LANE_SIGMAS,
+    LANE_WEIGHTS,
+    LANE_POSE,
+    HFLIP,
+)
 
 
 class OpenlaneKp(openpifpaf.datasets.DataModule):
@@ -32,11 +41,11 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
     debug = False
     pin_memory = False
 
-    train_annotations = 'data-openlane/annotations/openlane_train.json'
-    val_annotations = 'data-openlane/annotations/openlane_val.json'
+    train_annotations = '../data-openlane/annotations/openlane_keypoints_training.json'
+    val_annotations = '../data-openlane/annotations/openlane_keypoints_validation.json'
     eval_annotations = val_annotations
-    train_image_dir = 'data-openlane/images/train/'
-    val_image_dir = 'data-openlane/images/val/'
+    train_image_dir = '../data-openlane/images/training/'
+    val_image_dir = '../data-openlane/images/validation/'
     eval_image_dir = val_image_dir
 
     n_images = None
@@ -56,14 +65,14 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
     eval_extended_scale = False
 
     # lane-specific configuration
-    hflip = None
-    weights: Optional[List[float]] = None
-    lane_categories = None
-    lane_keypoints = None
-    lane_skeleton: Optional[List[Tuple[int, int]]] = None
-    lane_sigmas = None
-    lane_pose = None
-    lane_score_weights = None
+    hflip = HFLIP
+    weights: Optional[List[float]] = LANE_WEIGHTS
+    lane_categories = LANE_CATEGORIES
+    lane_keypoints = LANE_KEYPOINTS
+    lane_skeleton: Optional[List[Tuple[int, int]]] = LANE_SKELETON
+    lane_sigmas = LANE_SIGMAS
+    lane_pose = LANE_POSE
+    lane_score_weights = LANE_WEIGHTS
 
     def __init__(self):
         super().__init__()
@@ -166,7 +175,7 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
         cls.debug = args.debug
         cls.pin_memory = args.pin_memory
 
-        # Apollo specific
+        # Openlane specific
         cls.train_annotations = args.openlane_train_annotations
         cls.val_annotations = args.openlane_val_annotations
         cls.eval_annotations = cls.val_annotations

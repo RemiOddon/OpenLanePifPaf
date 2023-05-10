@@ -12,6 +12,8 @@ from ..configurable import Configurable
 from . import basenetworks, heads, model_migration, nets, tracking_heads
 from .tracking_base import TrackingBase
 
+from .DIFFNet.depth_net import DepthNet
+
 
 # monkey patch torchvision for mobilenetv2 checkpoint backwards compatibility
 if (
@@ -179,16 +181,16 @@ class Factory(Configurable):
         cls.download_progress = args.download_progress
         cls.head_consolidation = args.head_consolidation
 
-    def factory(self, *, head_metas=None) -> Tuple[nets.Shell, int]:
+    def factory(self, *, head_metas=None, device) -> Tuple[nets.Shell, int]:#DLAV
         if self.base_name:
             assert head_metas
             assert self.checkpoint is None
-            net_cpu: nets.Shell = self.from_scratch(head_metas)
+            net_cpu: nets.Shell = self.from_scratch(head_metas, device)#DLAV
             net_cpu = self.init_net(net_cpu)
             epoch = 0
             return net_cpu, epoch
 
-        net_cpu, epoch = self.from_checkpoint()
+        net_cpu, epoch = self.from_checkpoint(device)#DLAV
         if head_metas is not None:
             self.consolidate_heads(net_cpu, head_metas)
 
@@ -273,14 +275,15 @@ class Factory(Configurable):
 
         return net_cpu, epoch
 
-    def from_scratch(self, head_metas) -> nets.Shell:
+    def from_scratch(self, head_metas, device) -> nets.Shell:#DLAV
+        depthnet=DepthNet(device) #DLAV
         if self.base_name not in BASE_FACTORIES:
             raise Exception('basenet {} unknown'.format(self.base_name))
 
         basenet = BASE_FACTORIES[self.base_name]()
         headnets = [HEADS[h.__class__](h, basenet.out_features) for h in head_metas]
 
-        net_cpu = nets.Shell(basenet, headnets)
+        net_cpu = nets.Shell(depthnet, basenet, headnets)#DLAV
         nets.model_defaults(net_cpu)
         return net_cpu
 

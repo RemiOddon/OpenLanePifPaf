@@ -129,7 +129,7 @@ def main():
 
     datamodule = datasets.factory(args.dataset)
 
-    net_cpu, start_epoch = network.Factory().factory(head_metas=datamodule.head_metas)
+    net_cpu, start_epoch = network.Factory().factory(head_metas=datamodule.head_metas, device=args.device)#DLAV
     loss = network.losses.Factory().factory(datamodule.head_metas)
 
     checkpoint_shell = None
