@@ -249,14 +249,14 @@ class Regression(Base):
         """
         x, t = super().forward(x_all, t_all)
 
-        x_regs = x[:, :, :, :, 0:2]
-        x_scales = x[:, :, :, :, 2:3]
-        t_regs = t[:, :, :, :, 0:2]
-        t_sigma_min = t[:, :, :, :, 2:3]
-        t_scales = t[:, :, :, :, 3:4]
+        x_regs = x[:, :, :, :, 0:3]#DLAV
+        x_scales = x[:, :, :, :, 3:4]#DLAV
+        t_regs = t[:, :, :, :, 0:3]#DLAV
+        t_sigma_min = t[:, :, :, :, 3:4]#DLAV
+        t_scales = t[:, :, :, :, 4:5]#DLAV
         if self.scale_from_wh:
-            x_scales = torch.linalg.norm(x[:, :, :, :, 2:4], ord=2, dim=4, keepdim=True)
-            t_scales = torch.linalg.norm(t[:, :, :, :, 3:5], ord=2, dim=4, keepdim=True)
+            x_scales = torch.linalg.norm(x[:, :, :, :, 3:5], ord=2, dim=4, keepdim=True)#DLAV
+            t_scales = torch.linalg.norm(t[:, :, :, :, 4:6], ord=2, dim=4, keepdim=True)#DLAV
 
         finite = torch.isfinite(t_regs)
         reg_mask = torch.all(finite, dim=4)

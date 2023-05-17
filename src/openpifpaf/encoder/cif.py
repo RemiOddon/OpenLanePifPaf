@@ -83,9 +83,11 @@ class CifGenerator():
             self.fill_keypoints(keypoints)
 
     def fill_keypoints(self, keypoints):
-        scale = self.rescaler.scale(keypoints)
-        for f, xyv in enumerate(keypoints):
-            if xyv[2] <= self.config.v_threshold:
+        scale = self.rescaler.scale(keypoints['xyz'])#DLAV
+        # print(keypoints)
+        for f, (xyz, uv) in enumerate(zip(keypoints['xyz'], keypoints['uv'])):#DLAV
+            # print(type(kps), kps)
+            if uv[2] <= self.config.v_threshold:#DLAVnop
                 continue
 
             joint_scale = (
@@ -94,41 +96,64 @@ class CifGenerator():
                 else scale * self.config.meta.sigmas[f]
             )
 
-            self.fill_coordinate(f, xyv, joint_scale)
+            self.fill_coordinate(f, uv, xyz, joint_scale)
 
-    def fill_coordinate(self, f, xyv, scale):
-        ij = np.round(xyv[:2] - self.s_offset).astype(np.intc) + self.config.padding
-        minx, miny = int(ij[0]), int(ij[1])
-        maxx, maxy = minx + self.config.side_length, miny + self.config.side_length
+    def fill_coordinate(self, f, uvv, xyz, scale):
+        # ij = np.round(uvv[:2] - self.s_offset).astype(np.intc) + self.config.padding
+        # minx, miny = int(ij[0]), int(ij[1])
+        # maxx, maxy = minx + self.config.side_length, miny + self.config.side_length
+        # if minx < 0 or maxx > self.intensities.shape[2] or \
+        #    miny < 0 or maxy > self.intensities.shape[1]:
+        #     return
+
+        # offset = uvv[:2] - (ij + self.s_offset - self.config.padding) # offset entre xy réel et xy discrétiser
+        # offset = offset.reshape(2, 1, 1) 
+
+        # # mask
+        # sink_reg = self.sink + offset
+        # sink_l = np.linalg.norm(sink_reg, axis=0)
+        # mask = sink_l < self.fields_reg_l[f, miny:maxy, minx:maxx]
+        # mask_peak = np.logical_and(mask, sink_l < 0.7)
+        # self.fields_reg_l[f, miny:maxy, minx:maxx][mask] = sink_l[mask]
+
+        # # update intensity
+        # self.intensities[f, miny:maxy, minx:maxx][mask] = 1.0
+        # self.intensities[f, miny:maxy, minx:maxx][mask_peak] = 1.0
+
+        # # update regression
+        # patch = self.fields_reg[f, :, miny:maxy, minx:maxx]
+        # patch[:, mask] = sink_reg[:, mask]
+
+        # # update bmin
+        # bmin = self.config.bmin / self.config.meta.stride
+        # self.fields_bmin[f, miny:maxy, minx:maxx][mask] = bmin
+
+        # # update scale
+        # assert np.isnan(scale) or 0.0 < scale < 100.0
+        # self.fields_scale[f, miny:maxy, minx:maxx][mask] = scale
+
+        ij = np.round(uvv[:2] - self.s_offset).astype(np.intc) + self.config.padding#DLAV
+        minx, miny = int(ij[0]), int(ij[1])#DLAV
+        maxx, maxy = minx + self.config.side_length, miny + self.config.side_length#DLAV
         if minx < 0 or maxx > self.intensities.shape[2] or \
-           miny < 0 or maxy > self.intensities.shape[1]:
+           miny < 0 or maxy > self.intensities.shape[1]:#DLAV
             return
 
-        offset = xyv[:2] - (ij + self.s_offset - self.config.padding)
-        offset = offset.reshape(2, 1, 1)
-
-        # mask
-        sink_reg = self.sink + offset
-        sink_l = np.linalg.norm(sink_reg, axis=0)
-        mask = sink_l < self.fields_reg_l[f, miny:maxy, minx:maxx]
-        mask_peak = np.logical_and(mask, sink_l < 0.7)
-        self.fields_reg_l[f, miny:maxy, minx:maxx][mask] = sink_l[mask]
-
+        s=self.config.side_length#DLAV
+        center_mask=np.zeros((s, s), dtype=bool)#DLAV
+        center_mask[[int(s/2-1), int(s/2-1), int(s/2), int(s/2)] if s%2==0 else [int((s-1)/2)], [int(s/2-1), int(s/2), int(s/2-1), int(s/2)] if s%2==0 else [int((s-1)/2)]]=True  #DLAV
         # update intensity
-        self.intensities[f, miny:maxy, minx:maxx][mask] = 1.0
-        self.intensities[f, miny:maxy, minx:maxx][mask_peak] = 1.0
-
+        self.intensities[f, miny:maxy, minx:maxx]=1.0#DLAV
         # update regression
-        patch = self.fields_reg[f, :, miny:maxy, minx:maxx]
-        patch[:, mask] = sink_reg[:, mask]
-
+        self.fields_reg[f, :, miny:maxy, minx:maxx]=xyz[:3].reshape(3,1,1).repeat(self.config.side_length, axis=2).repeat(self.config.side_length, axis=1)#DLAV
         # update bmin
-        bmin = self.config.bmin / self.config.meta.stride
-        self.fields_bmin[f, miny:maxy, minx:maxx][mask] = bmin
-
+        self.fields_bmin[f, miny:maxy, minx:maxx]=self.config.bmin / self.config.meta.stride#DLAV
         # update scale
-        assert np.isnan(scale) or 0.0 < scale < 100.0
-        self.fields_scale[f, miny:maxy, minx:maxx][mask] = scale
+        self.fields_scale[f, miny:maxy, minx:maxx] = scale#DLAV
+        # update fields_reg_l
+        self.fields_reg_l[f, miny:maxy, minx:maxx][center_mask] = 0.9*self.fields_reg_l[f, miny:maxy, minx:maxx][center_mask]#DLAV
+        center_inf_mask=np.logical_and(center_mask, np.isinf(self.fields_reg_l[f, miny:maxy, minx:maxx]))#DLAV
+        self.fields_reg_l[f, miny:maxy, minx:maxx][center_inf_mask] = 1#DLAV
 
     def fields(self, valid_area):
         p = self.config.padding
@@ -140,6 +165,7 @@ class CifGenerator():
         mask_valid_area(intensities, valid_area)
         mask_valid_area(fields_reg[:, 0], valid_area, fill_value=np.nan)
         mask_valid_area(fields_reg[:, 1], valid_area, fill_value=np.nan)
+        mask_valid_area(fields_reg[:, 2], valid_area, fill_value=np.nan)#DLAV
         mask_valid_area(fields_bmin, valid_area, fill_value=np.nan)
         mask_valid_area(fields_scale, valid_area, fill_value=np.nan)
 

@@ -286,7 +286,7 @@ class CompositeField4(HeadNetwork):
 
         self.dropout = torch.nn.Dropout2d(p=self.dropout_p)
 
-        # convolution
+        # convolutionF
         self.n_components = 1 + meta.n_confidences + meta.n_vectors * 3 + meta.n_scales#DLAV
         self.conv = torch.nn.Conv2d(
             in_features, meta.n_fields * self.n_components * (meta.upsample_stride ** 2),

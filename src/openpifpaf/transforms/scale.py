@@ -76,9 +76,9 @@ def _scale(image, anns, meta, target_w, target_h, resample, *, fast=False):
     y_scale = (image.size[1] - 1) / (h - 1)
     scale_factors = np.array((x_scale, y_scale))
     for ann in anns:
-        ann['keypoints'][:, [0, 1]] *= np.expand_dims(scale_factors, 0)
-        ann['bbox'][:2] *= scale_factors
-        ann['bbox'][2:] *= scale_factors
+        ann['uv'][:, [0, 1]] *= np.expand_dims(scale_factors, 0)
+        ann['bbox'][:2] *= scale_factors#DLAVnop
+        ann['bbox'][2:] *= scale_factors#DLAVnop
 
     # adjust meta
     LOG.debug('meta before: %s', meta)

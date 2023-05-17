@@ -41,11 +41,11 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
     debug = False
     pin_memory = False
 
-    train_annotations = '../data-openlane/annotations/openlane_keypoints_training.json'
-    val_annotations = '../data-openlane/annotations/openlane_keypoints_validation.json'
+    train_annotations = '/home/oddon/data-openlane2/annotations/openlane_keypoints_training.json'
+    val_annotations = '/home/oddon/data-openlane2/annotations/openlane_keypoints_validation.json'
     eval_annotations = val_annotations
-    train_image_dir = '../data-openlane/images/training/'
-    val_image_dir = '../data-openlane/images/validation/'
+    train_image_dir = '/home/oddon/data-openlane2/images/training/'
+    val_image_dir = '/home/oddon/data-openlane2/images/validation/'
     eval_image_dir = val_image_dir
 
     n_images = None
@@ -138,7 +138,7 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
         assert cls.augmentation
         group.add_argument('--openlane-no-augmentation',
                            dest='openlane_augmentation',
-                           default=True, action='store_false',
+                           default=False, action='store_false',
                            help='do not apply data augmentation')
         group.add_argument('--openlane-rescale-images',
                            default=cls.rescale_images, type=float,
@@ -238,7 +238,7 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
                  openpifpaf.transforms.RotateUniform(30.0)],
                 [self.orientation_invariant, 0.2],
             ),
-            openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),
+            # openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),   #DLAV don't use crop cause we do not know the area of interest in image since we only have 3D keypoints
             openpifpaf.transforms.CenterPad(self.square_edge),
             openpifpaf.transforms.MinSize(min_side=32.0),
             openpifpaf.transforms.TRAIN_TRANSFORM,

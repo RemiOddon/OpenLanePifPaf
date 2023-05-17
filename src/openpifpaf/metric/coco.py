@@ -125,7 +125,7 @@ class Coco(Base):
             image_annotations.append({
                 'image_id': image_id,
                 'category_id': 1,
-                'keypoints': np.zeros((n_keypoints * 3,)).tolist(),
+                'keypoints': np.zeros((n_keypoints * 3,)).tolist(),#DLAVnop should it be 3 ? !!!!!!!!!!! WARNING
                 'bbox': [0, 0, 1, 1],
                 'score': 0.001,
             })

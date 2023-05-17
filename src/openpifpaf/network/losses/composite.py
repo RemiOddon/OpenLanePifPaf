@@ -34,15 +34,17 @@ class CompositeLoss(torch.nn.Module):
             regression_components = [
                 components.Regression(
                     [
-                        2 + vi * 2,
-                        2 + vi * 2 + 1,
-                        2 + head_meta.n_vectors * 2 + vi,
+                        2 + vi * 3,#DLAV
+                        2 + vi * 3 + 1,#DLAV
+                        2 + vi * 3 + 2,#DLAV
+                        2 + head_meta.n_vectors * 3 + vi,#DLAV
                     ],
                     [
-                        1 + vi * 2,
-                        1 + vi * 2 + 1,
-                        1 + head_meta.n_vectors * 2 + vi,
-                        1 + head_meta.n_vectors * 3 + vi,
+                        1 + vi * 3,#DLAV
+                        1 + vi * 3 + 1,#DLAV
+                        2 + vi * 3 + 2,#DLAV
+                        1 + head_meta.n_vectors * 3 + vi,#DLAV
+                        1 + head_meta.n_vectors * 4 + vi,#DLAV
                     ],
                     weights=weights,
                 )
@@ -78,8 +80,8 @@ class CompositeLoss(torch.nn.Module):
         if head_meta.n_scales:
             loss_components[f'{head_meta.dataset}.{head_meta.name}.scales'] = [
                 components.Scale(
-                    [2 + head_meta.n_vectors * 2 + si],
-                    [1 + head_meta.n_vectors * 3 + si],
+                    [2 + head_meta.n_vectors * 3 + si],#DLAV
+                    [1 + head_meta.n_vectors * 4 + si],#DLAV
                     weights=weights,
                 )
                 for si in range(head_meta.n_scales)

@@ -269,7 +269,7 @@ class ShuffleNetV2K(BaseNetwork):
 
         stride = 16  # in the default configuration
         input_modules = []
-        input_channels = 4#DLAV
+        input_channels = 3#DLAV
         output_channels = _stage_out_channels[0]
         conv1 = torch.nn.Sequential(
             torch.nn.Conv2d(input_channels, output_channels, 3, 2, 1, bias=False),

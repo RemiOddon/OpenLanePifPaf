@@ -119,44 +119,50 @@ class AssociationFiller:
 
             joint1 = keypoints[joint1i]
             joint2 = keypoints[joint2i]
-            if joint1[2] <= self.config.v_threshold or joint2[2] <= self.config.v_threshold:
+            if joint1[3] <= self.config.v_threshold or joint2[3] <= self.config.v_threshold:#DLAV
                 continue
 
-            d = np.linalg.norm(joint1[:2] - joint2[:2])
+            d = np.linalg.norm(joint1[:3] - joint2[:3])#DLAV
             shortest = min(d, shortest)
 
         return shortest
 
     def fill_keypoints(self, keypoints, fill_values):
         for field_i, joint1i, joint2i in self.config.fill_plan:
-            joint1 = keypoints[joint1i]
-            joint2 = keypoints[joint2i]
-            if joint1[2] <= self.config.v_threshold or joint2[2] <= self.config.v_threshold:
+            joint1 = {'uv':keypoints['uv'][joint1i], 'xyz':keypoints['xyz'][joint1i]} #DLAV
+            joint2 = {'uv':keypoints['uv'][joint2i], 'xyz':keypoints['xyz'][joint2i]} #DLAV
+            if joint1['xyz'][3] <= self.config.v_threshold or joint2['xyz'][3] <= self.config.v_threshold:#DLAV
                 continue
 
             # check if there are shorter connections in the sparse skeleton
             if self.sparse_skeleton_m1 is not None:
-                d = (np.linalg.norm(joint1[:2] - joint2[:2])
+                d = (np.linalg.norm(joint1['xyz'][:3] - joint2['xyz'][:3])#DLAV
                      / self.config.meta.dense_to_sparse_radius)
-                if self.shortest_sparse(joint1i, keypoints) < d \
-                   and self.shortest_sparse(joint2i, keypoints) < d:
+                if self.shortest_sparse(joint1i, keypoints['xyz']) < d \
+                   and self.shortest_sparse(joint2i, keypoints['xyz']) < d:#DLAV
                     continue
 
             # if there is no continuous visual connection, endpoints outside
             # the field of view cannot be inferred
-            # LOG.debug('fov check: j1 = %s, j2 = %s', joint1, joint2)
+            # # LOG.debug('fov check: j1 = %s, j2 = %s', joint1, joint2) # was commented
+            # out_field_of_view_1 = (
+            #     joint1[0] < 0
+            #     or joint1[1] < 0
+            #     or joint1[0] > self.field_shape[2] - 1 - 2 * self.config.padding
+            #     or joint1[1] > self.field_shape[1] - 1 - 2 * self.config.padding
+            # )
+            # out_field_of_view_2 = (
+            #     joint2[0] < 0
+            #     or joint2[1] < 0
+            #     or joint2[0] > self.field_shape[2] - 1 - 2 * self.config.padding
+            #     or joint2[1] > self.field_shape[1] - 1 - 2 * self.config.padding
+            # )
             out_field_of_view_1 = (
-                joint1[0] < 0
-                or joint1[1] < 0
-                or joint1[0] > self.field_shape[2] - 1 - 2 * self.config.padding
-                or joint1[1] > self.field_shape[1] - 1 - 2 * self.config.padding
-            )
+                joint1['xyz'][0] < 0
+            )#DLAV check if x value for lane is negative cause this is the only bound we can enforce here
             out_field_of_view_2 = (
-                joint2[0] < 0
-                or joint2[1] < 0
-                or joint2[0] > self.field_shape[2] - 1 - 2 * self.config.padding
-                or joint2[1] > self.field_shape[1] - 1 - 2 * self.config.padding
-            )
+                joint2['xyz'][0] < 0
+            )#DLAV
             if out_field_of_view_1 and out_field_of_view_2:
                 continue
             if self.config.meta.only_in_field_of_view:
@@ -167,14 +173,14 @@ class AssociationFiller:
 
     def fill_association(self, field_i, joint1, joint2, fill_values):
         # offset between joints
-        offset = joint2[:2] - joint1[:2]
+        offset = joint2['uv'][:2] - joint1['uv'][:2]#DLAV
         offset_d = np.linalg.norm(offset)
 
         # dynamically create s
         s = max(self.config.min_size, int(offset_d * self.config.aspect_ratio))
 
         # meshgrid: coordinate matrix
-        xyv = np.stack(np.meshgrid(
+        uvv = np.stack(np.meshgrid(
             np.linspace(-0.5 * (s - 1), 0.5 * (s - 1), s),
             np.linspace(-0.5 * (s - 1), 0.5 * (s - 1), s),
         ), axis=-1).reshape(-1, 2)
@@ -189,8 +195,8 @@ class AssociationFiller:
             frange = [0.5]
         filled_ij = set()
         for f in frange:
-            for xyo in xyv:
-                fij = np.round(joint1[:2] + f * offset + xyo).astype(np.intc) + self.config.padding
+            for uvo in uvv:
+                fij = np.round(joint1['uv'][:2] + f * offset + uvo).astype(np.intc) + self.config.padding#DLAV
                 if fij[0] < 0 or fij[0] >= self.field_shape[2] or \
                    fij[1] < 0 or fij[1] >= self.field_shape[1]:
                     continue
@@ -208,7 +214,7 @@ class AssociationFiller:
                 # Coordinate systems for this computation is such that
                 # joint1 is at (0, 0).
                 fxy = fij - self.config.padding
-                f_offset = fxy - joint1[:2]
+                f_offset = fxy - joint1['uv'][:2]#DLAV
                 sink_l = np.fabs(
                     offset[1] * f_offset[0]
                     - offset[0] * f_offset[1]
@@ -235,7 +241,7 @@ class CafGenerator(AssociationFiller):
         self.fields_scale2 = None
 
     def init_fields(self, bg_mask):
-        reg_field_shape = (self.field_shape[0], 2, self.field_shape[1], self.field_shape[2])
+        reg_field_shape = (self.field_shape[0], 3, self.field_shape[1], self.field_shape[2])#DLAV 2->3
 
         self.intensities = np.zeros(self.field_shape, dtype=np.float32)
         self.fields_reg1 = np.full(reg_field_shape, np.nan, dtype=np.float32)
@@ -250,7 +256,7 @@ class CafGenerator(AssociationFiller):
         self.intensities[:, p:-p, p:-p][:, bg_mask == 0] = np.nan
 
     def all_fill_values(self, keypoint_sets, anns):
-        return [(kps, self.rescaler.scale(kps)) for kps in keypoint_sets]
+        return [(kps, self.rescaler.scale(kps['xyz'])) for kps in keypoint_sets]#DLAV added xyz
 
     def fill_field_values(self, field_i, fij, fill_values):
         joint1i, joint2i = self.skeleton_m1[field_i]
@@ -260,9 +266,9 @@ class CafGenerator(AssociationFiller):
         self.intensities[field_i, fij[1], fij[0]] = 1.0
 
         # update regressions
-        fxy = fij - self.config.padding
-        self.fields_reg1[field_i, :, fij[1], fij[0]] = keypoints[joint1i][:2] - fxy
-        self.fields_reg2[field_i, :, fij[1], fij[0]] = keypoints[joint2i][:2] - fxy
+        # fxy = fij - self.config.padding #DLAV
+        self.fields_reg1[field_i, :, fij[1], fij[0]] = keypoints['xyz'][joint1i][:3] #DLAV changed an offset to the association keypoint to absolute 3D position
+        self.fields_reg2[field_i, :, fij[1], fij[0]] = keypoints['xyz'][joint2i][:3] #DLAV same
 
         # update bmin
         bmin = self.config.bmin / self.config.meta.stride
@@ -293,8 +299,10 @@ class CafGenerator(AssociationFiller):
         mask_valid_area(intensities, valid_area)
         mask_valid_area(fields_reg1[:, 0], valid_area, fill_value=np.nan)
         mask_valid_area(fields_reg1[:, 1], valid_area, fill_value=np.nan)
+        mask_valid_area(fields_reg1[:, 2], valid_area, fill_value=np.nan)
         mask_valid_area(fields_reg2[:, 0], valid_area, fill_value=np.nan)
         mask_valid_area(fields_reg2[:, 1], valid_area, fill_value=np.nan)
+        mask_valid_area(fields_reg2[:, 2], valid_area, fill_value=np.nan)
         mask_valid_area(fields_bmin1, valid_area, fill_value=np.nan)
         mask_valid_area(fields_bmin2, valid_area, fill_value=np.nan)
         mask_valid_area(fields_scale1, valid_area, fill_value=np.nan)

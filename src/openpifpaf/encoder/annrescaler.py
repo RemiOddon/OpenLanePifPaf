@@ -15,23 +15,24 @@ class AnnRescaler():
         self.pose = pose
 
         self.pose_total_area = None
-        self.pose_45 = None
-        self.pose_45_total_area = None
+        # self.pose_45 = None#DLAV
+        # self.pose_45_total_area = None#DLAV
         if pose is not None:
-            self.pose_total_area = (
+            self.pose_total_area = np.abs(
                 (np.max(self.pose[:, 0]) - np.min(self.pose[:, 0]))
                 * (np.max(self.pose[:, 1]) - np.min(self.pose[:, 1]))
+                * (np.max(self.pose[:, 2]) - np.min(self.pose[:, 2]))#DLAV
             )
 
             # rotate the davinci pose by 45 degrees
-            c, s = np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))
-            rotate = np.array(((c, -s), (s, c)))
-            self.pose_45 = np.copy(self.pose)
-            self.pose_45[:, :2] = np.einsum('ij,kj->ki', rotate, self.pose_45[:, :2])
-            self.pose_45_total_area = (
-                (np.max(self.pose_45[:, 0]) - np.min(self.pose_45[:, 0]))
-                * (np.max(self.pose_45[:, 1]) - np.min(self.pose_45[:, 1]))
-            )
+            # c, s = np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))#DLAV
+            # rotate = np.array(((c, -s), (s, c)))
+            # self.pose_45 = np.copy(self.pose)
+            # self.pose_45[:, :2] = np.einsum('ij,kj->ki', rotate, self.pose_45[:, :2])
+            # self.pose_45_total_area = (
+            #     (np.max(self.pose_45[:, 0]) - np.min(self.pose_45[:, 0]))
+            #     * (np.max(self.pose_45[:, 1]) - np.min(self.pose_45[:, 1]))
+            # )
 
     def valid_area(self, meta):
         if 'valid_area' not in meta:
@@ -83,23 +84,23 @@ class AnnRescaler():
 
     def keypoint_sets(self, anns):
         """Ignore annotations of crowds."""
-        keypoint_sets_bbox = [(np.copy(ann['keypoints']), ann['bbox'])
+        keypoint_sets_bbox = [(np.copy(ann['keypoints']), np.copy(ann['uv']), ann['bbox'])#DLAV
                               for ann in anns if not ann['iscrowd']]
         if not keypoint_sets_bbox:
             return []
 
         if self.suppress_collision:
             self.suppress_collision_(keypoint_sets_bbox)
-        keypoint_sets = [kps for kps, _ in keypoint_sets_bbox]
+        keypoint_sets = [{'xyz':kps, 'uv':uv} for kps, uv, _ in keypoint_sets_bbox]#DLAV
 
-        if self.suppress_invisible:
-            for kps in keypoint_sets:
-                kps[kps[:, 2] < 2.0, 2] = 0.0
-        elif self.suppress_selfhidden:
-            self.suppress_selfhidden_(keypoint_sets)
+        # if self.suppress_invisible:#DLAV
+        #     for kps in keypoint_sets:
+        #         kps[kps[:, 2] < 2.0, 2] = 0.0
+        # elif self.suppress_selfhidden:#DLAV
+        #     self.suppress_selfhidden_(keypoint_sets)
 
         for keypoints in keypoint_sets:
-            keypoints[:, :2] /= self.stride
+            keypoints['uv'][:, :2] /= self.stride#DLAV
         return keypoint_sets
 
     def bg_mask(self, anns, width_height, *, crowd_margin):
@@ -110,14 +111,14 @@ class AnnRescaler():
         ), dtype=np.bool_)
         for ann in anns:
             if not ann['iscrowd']:
-                valid_keypoints = 'keypoints' in ann and np.any(ann['keypoints'][:, 2] > 0)
+                valid_keypoints = 'keypoints' in ann and np.any(ann['keypoints'][:, 3] > 0)#DLAV
                 if valid_keypoints:
                     continue
 
             if 'mask' not in ann:
                 bb = ann['bbox'].copy()
                 bb /= self.stride
-                bb[2:] += bb[:2]  # convert width and height to x2 and y2
+                bb[2:] += bb[:2]  # convert width and height to x2 and y2 #DLAVnop
 
                 # left top
                 left = np.clip(int(bb[0] - crowd_margin), 0, mask.shape[1] - 1)
@@ -140,13 +141,14 @@ class AnnRescaler():
         return mask
 
     def scale(self, keypoints):
-        visible = keypoints[:, 2] > 0
+        visible = keypoints[:, 3] > 0#DLAV
         if np.sum(visible) < 3:
             return np.nan
 
-        area = (
+        area = np.abs(
             (np.max(keypoints[visible, 0]) - np.min(keypoints[visible, 0]))
             * (np.max(keypoints[visible, 1]) - np.min(keypoints[visible, 1]))
+            * (np.max(keypoints[visible, 2]) - np.min(keypoints[visible, 2]))#DLAV
         )
         factor = 1.0
 
@@ -154,16 +156,18 @@ class AnnRescaler():
             area_ref = (
                 (np.max(self.pose[visible, 0]) - np.min(self.pose[visible, 0]))
                 * (np.max(self.pose[visible, 1]) - np.min(self.pose[visible, 1]))
+                * (np.max(self.pose[visible, 2]) - np.min(self.pose[visible, 2]))#DLAV
             )
-            area_ref_45 = (
-                (np.max(self.pose_45[visible, 0]) - np.min(self.pose_45[visible, 0]))
-                * (np.max(self.pose_45[visible, 1]) - np.min(self.pose_45[visible, 1]))
-            )
+            # area_ref_45 = (
+            #     (np.max(self.pose_45[visible, 0]) - np.min(self.pose_45[visible, 0]))
+            #     * (np.max(self.pose_45[visible, 1]) - np.min(self.pose_45[visible, 1]))
+            # )#DLAV
 
-            factor = np.sqrt(min(
-                self.pose_total_area / area_ref if area_ref > 0.1 else np.inf,
-                self.pose_45_total_area / area_ref_45 if area_ref_45 > 0.1 else np.inf,
-            ))
+            # factor = np.sqrt(min(
+            #     self.pose_total_area / area_ref if area_ref > 0.1 else np.inf,
+            #     self.pose_45_total_area / area_ref_45 if area_ref_45 > 0.1 else np.inf,
+            # ))#DLAV
+            factor = np.sqrt(self.pose_total_area / area_ref if area_ref > 0.1 else np.inf)#DLAV
             if np.isinf(factor):
                 return np.nan
 
