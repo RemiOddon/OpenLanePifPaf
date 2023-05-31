@@ -6,5 +6,5 @@ from . import nms
 CafScored = torch.classes.openpifpaf_decoder_utils.CafScored
 CifHr = torch.classes.openpifpaf_decoder_utils.CifHr
 CifSeeds = torch.classes.openpifpaf_decoder_utils.CifSeeds
-CifDetSeeds = torch.classes.openpifpaf_decoder_utils.CifDetSeeds
+# CifDetSeeds = torch.classes.openpifpaf_decoder_utils.CifDetSeeds
 Occupancy = torch.classes.openpifpaf_decoder_utils.Occupancy

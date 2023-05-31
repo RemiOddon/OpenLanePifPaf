@@ -36,24 +36,24 @@ class MeanPixelError(Base):
         for annotation in ground_truth:
             if not isinstance(annotation, Annotation):
                 continue
-            indices_gt = np.nonzero(annotation.data[:, 2] > 1.0)
+            indices_gt = np.nonzero(annotation.data[:, 3] > 1.0)#DLAV 2->3
             if indices_gt[0].size <= 3:
                 continue
-            gts = annotation.data[indices_gt, 0:2].squeeze()
-            width = float(annotation.fixed_bbox[2])
-            height = float(annotation.fixed_bbox[3])
-            scale = np.array([self.px_ref / width, self.px_ref / height]).reshape(1, 2)
+            gts = annotation.data[indices_gt, 0:3].squeeze()#DLAV 2->3
+            # width = float(annotation.fixed_bbox[2]))#DLAV
+            # height = float(annotation.fixed_bbox[3])
+            # scale = np.array([self.px_ref / width, self.px_ref / height]).reshape(1, 2)
 
             # Evaluate each keypoint
             for idx, gt in zip(indices_gt[0], gts):
-                preds = np.array([p.data[idx] for p in predictions]).reshape(-1, 3)[:, 0:2]
+                preds = np.array([p.data[idx] for p in predictions]).reshape(-1, 4)[:, 0:3]#DLAV 3->4, 2->3
                 if preds.size <= 0:
                     continue
                 i = np.argmin(np.linalg.norm(preds - gt, axis=1))
                 dist = preds[i:i + 1] - gt
-                dist_scaled = dist * scale
+                # dist_scaled = dist * scale
                 d = float(np.linalg.norm(dist, axis=1))
-                d_scaled = float(np.linalg.norm(dist_scaled, axis=1))
+                # d_scaled = float(np.linalg.norm(dist_scaled, axis=1))
 
                 # Prediction correct if error less than 10 pixels
                 if d < 10:
@@ -61,43 +61,39 @@ class MeanPixelError(Base):
                     detections.append(1)
                 else:
                     detections.append(0)
-                if d_scaled < 10:
-                    errors_scaled.append(d)
-                    detections_scaled.append(1)
-                else:
-                    detections_scaled.append(0)
+                # if d_scaled < 10:
+                #     errors_scaled.append(d)
+                #     detections_scaled.append(1)
+                # else:
+                #     detections_scaled.append(0)
 
         # Stats for a single image
         mpe = average(errors)
-        mpe_scaled = average(errors_scaled)
+        # mpe_scaled = average(errors_scaled)
         det_rate = 100 * average(detections)
-        det_rate_scaled = 100 * average(detections_scaled)
+        # det_rate_scaled = 100 * average(detections_scaled)
         LOG.info('Mean Pixel Error (scaled): %s (%s)    Det. Rate (scaled): %s (%s)',
-                 str(mpe)[:4], str(mpe_scaled)[:4], str(det_rate)[:4], str(det_rate_scaled)[:4])
+                 str(mpe)[:4], str(det_rate)[:4])# str(mpe_scaled)[:4], , str(det_rate_scaled)[:4]
 
         # Accumulate stats
         self.errors.extend(errors)
         self.detections.extend(detections)
-        self.errors_scaled.extend(errors_scaled)
-        self.detections_scaled.extend(detections_scaled)
+        # self.errors_scaled.extend(errors_scaled)
+        # self.detections_scaled.extend(detections_scaled)
 
     def write_predictions(self, filename, *, additional_data=None):
         raise NotImplementedError
 
     def stats(self):
         mpe = average(self.errors)
-        mpe_scaled = average(self.errors_scaled)
+        # mpe_scaled = average(self.errors_scaled)
         det_rate = 100 * average(self.detections)
-        det_rate_scaled = 100 * average(self.detections_scaled)
-        LOG.info('Final Results: \nMean Pixel Error [scaled] : %f [%f] '
-                 '\nDetection Rate [scaled]: %f [%f]',
-                 mpe, mpe_scaled, det_rate, det_rate_scaled)
+        # det_rate_scaled = 100 * average(self.detections_scaled)
+        LOG.info('Final Results: \nMean Pixel Error [scaled] : %f [%f] ', mpe, det_rate)
         data = {
-            'stats': [mpe, mpe_scaled, det_rate, det_rate_scaled],
+            'stats': [mpe, det_rate],
             'text_labels': ['Mean Pixel Error',
-                            'Mean Pixel Error Scaled',
-                            'Detection Rate [%]',
-                            'Detection Rate Scaled[%]'],
+                            'Detection Rate [%]'],
         }
         return data
 

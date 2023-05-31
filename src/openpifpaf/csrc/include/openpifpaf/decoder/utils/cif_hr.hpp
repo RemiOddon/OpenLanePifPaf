@@ -34,19 +34,20 @@ struct CifHr : torch::CustomClassHolder {
     static bool ablation_skip;
 
     CifHr(
-    ) : accumulated_buffer(torch::zeros({ 1, 1, 1 })),
+    ) : accumulated_buffer(torch::zeros({ 1, 1, 1, 1 })),//DLAV
         accumulated(
             accumulated_buffer.index({
                 at::indexing::Slice(0, 1),
                 at::indexing::Slice(0, 1),
-                at::indexing::Slice(0, 1)
+                at::indexing::Slice(0, 1),
+                at::indexing::Slice(0, 1)//DLAV
             })
         ),
         revision(0.0)
     { }
 
     void accumulate(const torch::Tensor& cif_field, int64_t stride, double min_scale = 0.0, double factor = 1.0);
-    void add_gauss(int64_t f, float v, float x, float y, float sigma, float truncate = 1.0);
+    void add_gauss(int64_t f, float v, float x, float y, float z, float sigma, float truncate = 1.0);//DLAV
     std::tuple<torch::Tensor, double> get_accumulated(void);
     void reset(const at::IntArrayRef& shape, int64_t stride);
 };

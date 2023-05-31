@@ -32,6 +32,7 @@ bool FrontierCompare::operator() (const FrontierEntry& a, const FrontierEntry& b
 Joint grow_connection_blend(const torch::Tensor& caf,
                             double x,
                             double y,
+                            double z,//DLAV
                             double xy_scale,
                             double filter_sigmas,
                             bool only_max) {
@@ -55,9 +56,11 @@ Joint grow_connection_blend(const torch::Tensor& caf,
         if (caf_a[i][1] > x + sigma_filter) continue;
         if (caf_a[i][2] < y - sigma_filter) continue;
         if (caf_a[i][2] > y + sigma_filter) continue;
+        if (caf_a[i][3] < z - sigma_filter) continue;//DLAV
+        if (caf_a[i][3] > z + sigma_filter) continue;//DLAV
 
         // source distance
-        d2 = std::pow(caf_a[i][1] - x, 2) + std::pow(caf_a[i][2] - y, 2);
+        d2 = std::pow(caf_a[i][1] - x, 2) + std::pow(caf_a[i][2] - y, 2) + std::pow(caf_a[i][3] - z, 2);//DLAV
 
         // combined value and source distance
         score = std::exp(-0.5 * d2 / sigma2) * caf_a[i][0];
@@ -73,42 +76,44 @@ Joint grow_connection_blend(const torch::Tensor& caf,
         }
     }
 
-    if (score_1 == 0.0) return { 0, 0, 0, 0 };
+    if (score_1 == 0.0) return { 0, 0, 0, 0, 0 };//DLAV
 
-    float entry_1[3] = {  // xys
-        caf_a[score_1_i][3], caf_a[score_1_i][4],
-        fmaxf(0.0f, caf_a[score_1_i][6])
+    float entry_1[4] = {  // xyzs
+        caf_a[score_1_i][4], caf_a[score_1_i][5], caf_a[score_1_i][6],//DLAV
+        fmaxf(0.0f, caf_a[score_1_i][8])//DLAV 6->8
     };
     if (only_max)
-        return { score_1, entry_1[0], entry_1[1], entry_1[2] };
+        return { score_1, entry_1[0], entry_1[1], entry_1[2], entry_1[3] };
     if (score_2 < 0.01 || score_2 < 0.5 * score_1)
-        return { 0.5 * score_1, entry_1[0], entry_1[1], entry_1[2] };
+        return { 0.5 * score_1, entry_1[0], entry_1[1], entry_1[2], entry_1[3] };
 
     // blend
-    float entry_2[3] = {  // xys
-        caf_a[score_2_i][3], caf_a[score_2_i][4],
-        fmaxf(0.0f, caf_a[score_2_i][6])
+    float entry_2[4] = {  // xyzs //DLAV
+        caf_a[score_2_i][4], caf_a[score_2_i][5], caf_a[score_2_i][6],//DLAV
+        fmaxf(0.0f, caf_a[score_2_i][8])//DLAV 6->8
     };
 
-    float blend_d2 = std::pow(entry_1[0] - entry_2[0], 2) + std::pow(entry_1[1] - entry_2[1], 2);
-    if (blend_d2 > std::pow(entry_1[2], 2) / 4.0)
-        return { 0.5 * score_1, entry_1[0], entry_1[1], entry_1[2] };
+    float blend_d2 = std::pow(entry_1[0] - entry_2[0], 2) + std::pow(entry_1[1] - entry_2[1], 2) + std::pow(entry_1[2] - entry_2[2], 2);//DLAV
+    if (blend_d2 > std::pow(entry_1[3], 2) / 4.0)//DLAV 2->3
+        return { 0.5 * score_1, entry_1[0], entry_1[1], entry_1[2], entry_1[3] };
 
     return {
         0.5 * (score_1 + score_2),
         (score_1 * entry_1[0] + score_2 * entry_2[0]) / (score_1 + score_2),
         (score_1 * entry_1[1] + score_2 * entry_2[1]) / (score_1 + score_2),
-        (score_1 * entry_1[2] + score_2 * entry_2[2]) / (score_1 + score_2)
+        (score_1 * entry_1[2] + score_2 * entry_2[2]) / (score_1 + score_2),
+        (score_1 * entry_1[3] + score_2 * entry_2[3]) / (score_1 + score_2)
     };
 }
 
 std::vector<double> grow_connection_blend_py(const torch::Tensor& caf,
                                              double x,
                                              double y,
+                                             double z,
                                              double s,
                                              double filter_sigmas,
                                              bool only_max) {
-    Joint j(grow_connection_blend(caf, x, y, s, filter_sigmas, only_max));
+    Joint j(grow_connection_blend(caf, x, y, z, s, filter_sigmas, only_max));
     return { j.x, j.y, j.s, j.v };  // xysv
 }
 
@@ -187,7 +192,8 @@ std::tuple<torch::Tensor, torch::Tensor> CifCaf::call_with_initial_annotations(
                 o_joint.v = ann[of][0];
                 o_joint.x = ann[of][1];
                 o_joint.y = ann[of][2];
-                o_joint.s = ann[of][3];
+                o_joint.z = ann[of][3];
+                o_joint.s = ann[of][4];
             }
 
             _grow(&annotation, caf_fb);
@@ -195,26 +201,28 @@ std::tuple<torch::Tensor, torch::Tensor> CifCaf::call_with_initial_annotations(
             for (int64_t of=0; of < occupancy.n_fields(); of++) {
                 Joint& o_joint = annotation.joints[of];
                 if (o_joint.v == 0.0) continue;
-                occupancy.set(of, o_joint.x, o_joint.y, o_joint.s);
+                occupancy.set(of, o_joint.x, o_joint.y, o_joint.z, o_joint.s);
             }
             annotations.push_back(annotation);
         }
     }
 
     int64_t f;
-    float x, y, s;
+    float x, y, z, s;//DLAV
     for (int64_t seed_i=0; seed_i < seeds_f.size(0); seed_i++) {
         f = seeds_f_a[seed_i];
         x = seeds_vxys_a[seed_i][1];
         y = seeds_vxys_a[seed_i][2];
-        s = seeds_vxys_a[seed_i][3];
-        if (occupancy.get(f, x, y)) continue;
+        z = seeds_vxys_a[seed_i][3];//DLAV
+        s = seeds_vxys_a[seed_i][4];//DLAV
+        if (occupancy.get(f, x, y, z)) continue;//DLAV
 
         Annotation annotation(n_keypoints);
         Joint& joint = annotation.joints[f];
         joint.v = seeds_vxys_a[seed_i][0];
         joint.x = x;
         joint.y = y;
+        joint.z = z;//DLAV
         joint.s = s;
 #ifdef DEBUG
         TORCH_WARN("new seed: field=", f, " x=", x, " y=", y, " s=", s);
@@ -225,7 +233,7 @@ std::tuple<torch::Tensor, torch::Tensor> CifCaf::call_with_initial_annotations(
         for (int64_t of=0; of < occupancy.n_fields(); of++) {
             Joint& o_joint = annotation.joints[of];
             if (o_joint.v == 0.0) continue;
-            occupancy.set(of, o_joint.x, o_joint.y, o_joint.s);
+            occupancy.set(of, o_joint.x, o_joint.y, o_joint.z, o_joint.s);//DLAV
         }
         annotations.push_back(annotation);
     }
@@ -243,7 +251,7 @@ std::tuple<torch::Tensor, torch::Tensor> CifCaf::call_with_initial_annotations(
 #ifdef DEBUG
     TORCH_WARN("convert to tensor");
 #endif
-    auto out = torch::empty({ int64_t(annotations.size()), n_keypoints, 4 });
+    auto out = torch::empty({ int64_t(annotations.size()), n_keypoints, 5 });//DLAV 4->5
     auto out_ids = torch::empty({ int64_t(annotations.size()) }, torch::kInt64);
     auto out_a = out.accessor<float, 3>();
     auto out_ids_a = out_ids.accessor<int64_t, 1>();
@@ -254,7 +262,8 @@ std::tuple<torch::Tensor, torch::Tensor> CifCaf::call_with_initial_annotations(
             out_a[ann_i][joint_i][0] = joint.v;
             out_a[ann_i][joint_i][1] = joint.x;
             out_a[ann_i][joint_i][2] = joint.y;
-            out_a[ann_i][joint_i][3] = joint.s;
+            out_a[ann_i][joint_i][3] = joint.z;//DLAV
+            out_a[ann_i][joint_i][4] = joint.s;//DLAV
         }
         out_ids_a[ann_i] = ann.id;
     }
@@ -380,7 +389,7 @@ Joint CifCaf::_connection_value(
 
     const Joint& start_j = ann.joints[start_i];
     Joint new_j = grow_connection_blend(
-        caf_f, start_j.x, start_j.y, start_j.s, filter_sigmas, only_max);
+        caf_f, start_j.x, start_j.y, start_j.z, start_j.s, filter_sigmas, only_max);//DLAV
     if (new_j.v == 0.0) return new_j;
 
     new_j.v = sqrt(new_j.v * start_j.v);  // geometric mean
@@ -396,12 +405,12 @@ Joint CifCaf::_connection_value(
     // cannot work in these cases.
     if (reverse_match && reverse_match_ && start_i < occupancy.n_fields()) {
         Joint reverse_j = grow_connection_blend(
-            caf_b, new_j.x, new_j.y, new_j.s, filter_sigmas, only_max);
+            caf_b, new_j.x, new_j.y, new_j.z, new_j.s, filter_sigmas, only_max);//DLAV
         if (reverse_j.v == 0.0) {
             new_j.v = 0.0;
             return new_j;
         }
-        if (fabs(start_j.x - reverse_j.x) + fabs(start_j.y - reverse_j.y) > start_j.s) {
+        if (fabs(start_j.x - reverse_j.x) + fabs(start_j.y - reverse_j.y) + fabs(start_j.z - reverse_j.z) > start_j.s) {//DLAV
             new_j.v = 0.0;
             return new_j;
         }

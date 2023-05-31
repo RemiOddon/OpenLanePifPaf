@@ -54,11 +54,11 @@ TORCH_LIBRARY(openpifpaf_decoder, m) {
     ;
     m.def("grow_connection_blend", openpifpaf::decoder::grow_connection_blend_py);
 
-    m.class_<openpifpaf::decoder::CifDet>("CifDet")
-        STATIC_GETSET(openpifpaf::decoder::CifDet::max_detections_before_nms, int64_t, max_detections_before_nms)
+    // m.class_<openpifpaf::decoder::CifDet>("CifDet") //DLAV
+    //     STATIC_GETSET(openpifpaf::decoder::CifDet::max_detections_before_nms, int64_t, max_detections_before_nms)
 
-        .def(torch::init<>())
-        .def("call", &openpifpaf::decoder::CifDet::call)
+    //     .def(torch::init<>())
+    //     .def("call", &openpifpaf::decoder::CifDet::call)
     ;
 }
 
@@ -93,12 +93,12 @@ TORCH_LIBRARY(openpifpaf_decoder_utils, m) {
         .def("get", &openpifpaf::decoder::utils::CifSeeds::get)
     ;
 
-    m.class_<openpifpaf::decoder::utils::CifDetSeeds>("CifDetSeeds")
-        STATIC_GETSET(openpifpaf::decoder::utils::CifDetSeeds::threshold, double, threshold)
+    // m.class_<openpifpaf::decoder::utils::CifDetSeeds>("CifDetSeeds") //DLAV
+    //     STATIC_GETSET(openpifpaf::decoder::utils::CifDetSeeds::threshold, double, threshold)
 
-        .def(torch::init<const torch::Tensor&, double>())
-        .def("fill", &openpifpaf::decoder::utils::CifDetSeeds::fill)
-        .def("get", &openpifpaf::decoder::utils::CifDetSeeds::get)
+    //     .def(torch::init<const torch::Tensor&, double>())
+    //     .def("fill", &openpifpaf::decoder::utils::CifDetSeeds::fill)
+    //     .def("get", &openpifpaf::decoder::utils::CifDetSeeds::get)
     ;
 
     m.class_<openpifpaf::decoder::utils::CafScored>("CafScored")

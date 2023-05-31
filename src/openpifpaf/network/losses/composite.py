@@ -134,8 +134,7 @@ class CompositeLoss(torch.nn.Module):
         ]
 
         if not all(torch.isfinite(l).item() if l is not None else True for l in losses):
-            raise Exception('found a loss that is not finite: {}, prev: {}'
-                            ''.format(losses, self.previous_losses))
+            raise Exception('found a loss that is not finite: {}, prev: {}'.format(losses, self.previous_losses))
         self.previous_losses = [float(l.item()) if l is not None else None for l in losses]
 
         return losses

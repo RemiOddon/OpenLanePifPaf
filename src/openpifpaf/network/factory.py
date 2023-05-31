@@ -3,6 +3,7 @@ import logging
 import os
 from typing import Callable, Dict, Set, Tuple, Type
 import warnings
+import pickle
 
 import torch
 import torchvision
@@ -190,7 +191,7 @@ class Factory(Configurable):
             epoch = 0
             return net_cpu, epoch
 
-        net_cpu, epoch = self.from_checkpoint(device)#DLAV
+        net_cpu, epoch = self.from_checkpoint()
         if head_metas is not None:
             self.consolidate_heads(net_cpu, head_metas)
 
@@ -240,7 +241,7 @@ class Factory(Configurable):
         if not checkpoint:
             checkpoint = 'shufflenetv2k16'
 
-        if CHECKPOINT_URLS.get(checkpoint, None) is PRETRAINED_UNAVAILABLE:
+        if CHECKPOINT_URLS.get(checkpoint, None) is PRETRAINED_UNAVAILABLE: #DLAV
             raise Exception(
                 'The pretrained model for "{}" is not available yet '
                 'in this release cycle. Use one of {}.'.format(
@@ -266,6 +267,9 @@ class Factory(Configurable):
                         checkpoint,
                         [k for k, v in CHECKPOINT_URLS.items() if v is not PRETRAINED_UNAVAILABLE]
                     )) from e
+
+        # f=open('/scratch/izar/oddon/outputs/shufflenetv2k16-230524-155312-openlane-slurm1377284.pkl.epoch018', 'rb')
+        # checkpoint = pickle.load(f)
 
         net_cpu: nets.Shell = checkpoint['model']
         epoch = checkpoint['epoch']

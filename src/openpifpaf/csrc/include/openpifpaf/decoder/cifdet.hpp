@@ -20,11 +20,11 @@ namespace decoder {
 
 struct Detection {
     int64_t c;
-    double v, x, y, w, h;
+    double v, x, y, z, w, h;
 
-    Detection(void) : c(0), v(0.0), x(0.0), y(0.0), w(0.0), h(0.0) { }
-    Detection(int64_t c_, double v_, double x_, double y_, double w_, double h_)
-    : c(c_), v(v_), x(x_), y(y_), w(w_), h(h_)
+    Detection(void) : c(0), v(0.0), x(0.0), y(0.0), z(0.0), w(0.0), h(0.0) { }//DLAV
+    Detection(int64_t c_, double v_, double x_, double y_, double z_, double w_, double h_)//DLAV
+    : c(c_), v(v_), x(x_), y(y_), z(z_), w(w_), h(h_)//DLAV
     { }
 };
 

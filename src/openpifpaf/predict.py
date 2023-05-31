@@ -5,6 +5,8 @@ import glob
 import json
 import logging
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 import torch
 
@@ -12,6 +14,10 @@ from . import decoder, logger, network, show, visualizer, __version__
 from .predictor import Predictor
 
 LOG = logging.getLogger(__name__)
+
+DLAV_images = False #DLAV
+DLAV_images_path = '/home/oddon/DLAV_images'
+
 
 
 def cli():
@@ -95,6 +101,96 @@ def out_name(arg, in_name, default_extension):
 
     return arg
 
+def plot_prediction(lanes1,lanes2=None, filename=None):
+    lanes1=np.array(lanes1)
+    print(lanes1)
+    if len(lanes1.shape)!=3:
+        lanes1=lanes1.reshape((1,-1,3))
+    # Prepare arrays x, y, z
+    fig = plt.figure(figsize=(7,7))
+
+    if lanes2 in (None, []) :
+        lanes2=[None for _ in lanes1]
+
+    ax = fig.add_subplot(2, 2, 1, projection='3d')
+    for lane1, lane2 in zip(lanes1, lanes2):
+        x1 = lane1[:,0]
+        y1 = lane1[:,1]
+        z1 = lane1[:,2]
+
+        if lane2 is not None:
+            x2 = lane2[:,0]
+            y2 = lane2[:,1]
+            z2 = lane2[:,2]
+
+        ax.plot(x1, y1, z1, label='pred', color='b')
+        if lane2 is not None:
+            ax.plot(x2, y2, z2, label='true', color='r')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('XYZ')
+
+    ax = fig.add_subplot(2, 2, 2)
+    for lane1, lane2 in zip(lanes1, lanes2):
+        x1 = lane1[:,0]
+        y1 = lane1[:,1]
+        z1 = lane1[:,2]
+
+        if lane2 is not None:
+            x2 = lane2[:,0]
+            y2 = lane2[:,1]
+            z2 = lane2[:,2]
+
+        ax.plot(y1, z1, label='pred', color='b')
+        if lane2 is not None:
+            ax.plot(y2, z2, label='true', color='r')
+        ax.set_xlabel('Y')
+        ax.set_ylabel('Z')
+        ax.set_title('YZ')
+    
+    ax = fig.add_subplot(2, 2, 3)
+    for lane1, lane2 in zip(lanes1, lanes2):
+        x1 = lane1[:,0]
+        y1 = lane1[:,1]
+        z1 = lane1[:,2]
+
+        if lane2 is not None:
+            x2 = lane2[:,0]
+            y2 = lane2[:,1]
+            z2 = lane2[:,2]
+
+        ax.plot(x1, z1, label='pred', color='b')
+        if lane2 is not None:
+            ax.plot(x2, z2, label='true', color='r')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Z')
+        ax.set_title('XZ')
+
+    ax = fig.add_subplot(2, 2, 4)
+    for lane1, lane2 in zip(lanes1, lanes2):
+        x1 = lane1[:,0]
+        y1 = lane1[:,1]
+        z1 = lane1[:,2]
+
+        if lane2 is not None:
+            x2 = lane2[:,0]
+            y2 = lane2[:,1]
+            z2 = lane2[:,2]
+            
+        ax.plot(x1, y1, label='pred', color='b')
+        if lane2 is not None:
+            ax.plot(x2, y2, label='true', color='r')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_title('XY')
+
+    plt.subplots_adjust(wspace=0.5, hspace=0.3)
+    plt.suptitle('3D lane plots (blue: prediction, red: ground truth)')
+
+    plt.show()
+    plt.savefig(filename)
+
 
 def main():
     args = cli()
@@ -104,24 +200,43 @@ def main():
         visualize_image=(args.show or args.image_output is not None),
         visualize_processed_image=args.debug,
     )
-    for pred, _, meta in predictor.images(args.images):
-        # json output
-        if args.json_output is not None:
-            json_out_name = out_name(
-                args.json_output, meta['file_name'], '.predictions.json')
-            LOG.debug('json output = %s', json_out_name)
-            with open(json_out_name, 'w') as f:
-                json.dump([ann.json_data() for ann in pred], f)
 
-        # image output
-        if args.show or args.image_output is not None:
-            ext = show.Canvas.out_file_extension
-            image_out_name = out_name(
-                args.image_output, meta['file_name'], '.predictions.' + ext)
-            LOG.debug('image output = %s', image_out_name)
-            image = visualizer.Base.image()
-            with show.image_canvas(image, image_out_name) as ax:
-                annotation_painter.annotations(ax, pred)
+    if not DLAV_images:
+        for pred, _, meta in predictor.images(args.images):
+            # json output
+            if args.json_output is not None:
+                json_out_name = out_name(
+                    args.json_output, meta['file_name'], '.predictions.json')
+                LOG.debug('json output = %s', json_out_name)
+                with open(json_out_name, 'w') as f:
+                    json.dump([ann.json_data() for ann in pred], f)
+
+            data=json.load(open('/home/oddon/data-openlane/annotations/openlane_keypoints_validation.json'))
+            for im in data['images']:
+                if args.images == os.path.splitext(im['file_name'])[0]:
+                    break
+
+            im_id=im['id']
+            ground_truth_lanes=[]
+            for lane in data['annotations']:
+                if im_id == lane['image_id']:
+                    ground_truth_lanes.append(np.array(lane['keypoints']).reshape((-1,4)))
+                    
+            plot_prediction(pred, ground_truth_lanes, meta['file_name'])
+        
+    else:
+        for video in os.listdir(DLAV_images_path):
+            json_file={'project' : '3D Lane Detection by Group 17',
+                       'output' : []}
+
+            for img in os.listdir(os.path.join(DLAV_images_path, video)):
+                for pred, _, meta in predictor.images(os.path.join(DLAV_images_path, video, img)):
+                    frame_pred={'frame' : int(meta['file_name'].split('_')[-1]) , 'prediction' : [ann.json_data() for ann in pred]}
+                    json_file['output'].append()
+
+            with open('./' + str(video) + '.json', 'w') as f:
+                    json.dump(json_file, f)
+
 
 
 if __name__ == '__main__':

@@ -28,7 +28,7 @@ class Predictor:
         self.visualize_image = visualize_image
         self.visualize_processed_image = visualize_processed_image
 
-        self.model_cpu, _ = network.Factory().factory(head_metas=head_metas)
+        self.model_cpu, _ = network.Factory().factory(head_metas=head_metas, device=self.device)#DLAV added the device
         self.model = self.model_cpu.to(self.device)
         if self.device.type == 'cuda' and torch.cuda.device_count() > 1:
             LOG.info('Using multiple GPUs: %d', torch.cuda.device_count())

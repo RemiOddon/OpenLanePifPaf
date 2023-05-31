@@ -121,11 +121,11 @@ class Coco(Base):
         # force at least one annotation per image (for pycocotools)
         if not image_annotations:
             n_keypoints = (len(self.keypoint_oks_sigmas)
-                           if self.keypoint_oks_sigmas is not None else 17)
+                           if self.keypoint_oks_sigmas is not None else 2)#DLAV 17 -> 2
             image_annotations.append({
                 'image_id': image_id,
                 'category_id': 1,
-                'keypoints': np.zeros((n_keypoints * 3,)).tolist(),#DLAVnop should it be 3 ? !!!!!!!!!!! WARNING
+                'keypoints': np.zeros((n_keypoints * 4,)).tolist(),#DLAV 3->4
                 'bbox': [0, 0, 1, 1],
                 'score': 0.001,
             })

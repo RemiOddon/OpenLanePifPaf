@@ -36,7 +36,7 @@ class Shell(torch.nn.Module):
     def forward(self, image_batch, head_mask=None):
         #image_batch = torch.cat((image_batch, self.depth_net(image_batch)), dim=1)#DLAV
         
-        print("start Forward")
+        # print("start Forward")
         if self.process_input is not None:
             image_batch = self.process_input(image_batch)
 
@@ -48,7 +48,7 @@ class Shell(torch.nn.Module):
 
         if self.process_heads is not None:
             head_outputs = self.process_heads(head_outputs)
-        print("end Forward")
+        # print("end Forward")
         return head_outputs
 
 

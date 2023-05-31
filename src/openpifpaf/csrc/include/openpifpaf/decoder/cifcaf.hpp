@@ -19,11 +19,11 @@ namespace decoder {
 
 
 struct Joint {
-    double v, x, y, s;
+    double v, x, y, z, s;
 
-    Joint(void) : v(0.0), x(0.0), y(0.0), s(0.0) { }
-    Joint(double v_, double x_, double y_, double s_)
-    : v(v_), x(x_), y(y_), s(s_)
+    Joint(void) : v(0.0), x(0.0), y(0.0), z(0.0), s(0.0) { }
+    Joint(double v_, double x_, double y_, double z_, double s_)
+    : v(v_), x(x_), y(y_), z(z_), s(s_)
     { }
 };
 
@@ -43,6 +43,7 @@ struct Annotation {
 std::vector<double> grow_connection_blend_py(const torch::Tensor& caf,
                                              double x,
                                              double y,
+                                             double z,//DLAV
                                              double s,
                                              double filter_sigmas,
                                              bool only_max);

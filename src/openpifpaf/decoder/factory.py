@@ -24,7 +24,7 @@ def cli(parser, *, workers=None):
     group.add_argument('--decoder', default=None, nargs='+',
                        help='Decoders to be considered: {}.'.format(available_decoders))
 
-    assert utils.CifSeeds.get_threshold() == utils.CifDetSeeds.get_threshold()
+    # assert utils.CifSeeds.get_threshold() == utils.CifDetSeeds.get_threshold()
     group.add_argument('--seed-threshold', default=utils.CifSeeds.get_threshold(), type=float,
                        help='minimum threshold for seeds')
     assert CifDet.instance_threshold == utils.nms.Keypoints.get_instance_threshold()
@@ -65,7 +65,7 @@ def configure(args):
 
     # configure CifSeeds
     utils.CifSeeds.set_threshold(args.seed_threshold)
-    utils.CifDetSeeds.set_threshold(args.seed_threshold)
+    # utils.CifDetSeeds.set_threshold(args.seed_threshold)
 
     # configure CafScored
     utils.CafScored.set_default_score_th(args.caf_th)

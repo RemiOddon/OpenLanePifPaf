@@ -12,15 +12,17 @@ double CafScored::default_score_th = 0.3;
 bool CafScored::ablation_no_rescore = false;
 
 
-float CafScored::cifhr_value(int64_t f, float x, float y, float default_value) {
-    float max_x = static_cast<float>(cifhr_a.size(2)) - 0.51;
-    float max_y = static_cast<float>(cifhr_a.size(1)) - 0.51;
-    if (f >= cifhr_a.size(0) || x < -0.49 || y < -0.49 || x > max_x || y > max_y) {
+float CafScored::cifhr_value(int64_t f, float x, float y, float z, float default_value) {//DLAV
+    float max_x = static_cast<float>(cifhr_a.size(1));//DLAV
+    float max_y = static_cast<float>(cifhr_a.size(2));//DLAV
+    float max_z = static_cast<float>(cifhr_a.size(3));//DLAV
+
+    if (f >= cifhr_a.size(0) || x < 0 || y < -max_y/2 || z < -max_z/2 || x > max_x || y > max_y/2 || z > max_z/2) {//DLAV
         return default_value;
     }
 
     // effectively rounding: int(float_value + 0.5)
-    float value = cifhr_a[f][int64_t(y + 0.5)][int64_t(x + 0.5)] - cifhr_revision;
+    float value = cifhr_a[f][int64_t(x)][int64_t(y)][int64_t(z)] - cifhr_revision;//DLAV
     if (value < 0.0) return default_value;
     return value;
 }
@@ -45,27 +47,31 @@ void CafScored::fill(const torch::Tensor& caf_field, int64_t stride, const torch
 
                 CompositeAssociation ca_forward(
                     c,
-                    caf_field_a[f][2][j][i] * stride,
-                    caf_field_a[f][3][j][i] * stride,
-                    caf_field_a[f][4][j][i] * stride,
-                    caf_field_a[f][5][j][i] * stride,
-                    caf_field_a[f][6][j][i] * stride,
-                    caf_field_a[f][7][j][i] * stride
+                    caf_field_a[f][2][j][i],
+                    caf_field_a[f][3][j][i],
+                    caf_field_a[f][4][j][i],//DLAV
+                    caf_field_a[f][5][j][i],//DLAV
+                    caf_field_a[f][6][j][i],//DLAV
+                    caf_field_a[f][7][j][i],//DLAV
+                    caf_field_a[f][8][j][i],//DLAV
+                    caf_field_a[f][9][j][i]//DLAV
                 );
                 CompositeAssociation ca_backward(
                     c,
                     ca_forward.x2,
                     ca_forward.y2,
+                    ca_forward.z2,//DLAV
                     ca_forward.x1,
                     ca_forward.y1,
+                    ca_forward.z1,//DLAV
                     ca_forward.s2,
                     ca_forward.s1
                 );
 
                 // rescore
                 if (!ablation_no_rescore) {
-                    forward_hr = cifhr_value(skeleton_a[f][1], ca_forward.x2, ca_forward.y2, 0.0);
-                    backward_hr = cifhr_value(skeleton_a[f][0], ca_backward.x2, ca_backward.y2, 0.0);
+                    forward_hr = cifhr_value(skeleton_a[f][1], ca_forward.x2, ca_forward.y2, ca_forward.z2, 0.0);//DLAV
+                    backward_hr = cifhr_value(skeleton_a[f][0], ca_backward.x2, ca_backward.y2, ca_backward.z2, 0.0);//DLAV
                     ca_forward.c = ca_forward.c * (cif_floor + (1.0 - cif_floor) * forward_hr);
                     ca_backward.c = ca_backward.c * (cif_floor + (1.0 - cif_floor) * backward_hr);
                 }
@@ -90,7 +96,7 @@ std::vector<torch::Tensor> to_tensors(const std::vector<std::vector<CompositeAss
         int64_t n = associations.size();
         auto tensor = torch::from_blob(
             const_cast<void*>(reinterpret_cast<const void*>(associations.data())),
-            { n, 7 }
+            { n, 9 }//DLAV
         );
         tensors.push_back(tensor);
     }

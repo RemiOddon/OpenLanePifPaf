@@ -63,7 +63,7 @@ class AnnRescaler():
                     kps_s[collision, 2] = 0.0
 
     @staticmethod
-    def suppress_selfhidden_(keypoint_sets):
+    def suppress_selfhidden_(keypoint_sets): #DLAV changed to use uvv
         for kpi in range(len(keypoint_sets[0])):
             all_xyv = sorted([keypoints[kpi] for keypoints in keypoint_sets],
                              key=lambda xyv: xyv[2], reverse=True)
@@ -96,8 +96,8 @@ class AnnRescaler():
         # if self.suppress_invisible:#DLAV
         #     for kps in keypoint_sets:
         #         kps[kps[:, 2] < 2.0, 2] = 0.0
-        # elif self.suppress_selfhidden:#DLAV
-        #     self.suppress_selfhidden_(keypoint_sets)
+        if self.suppress_selfhidden:
+            self.suppress_selfhidden_([keypoints['uv'] for keypoints in keypoint_sets])#DLAV
 
         for keypoints in keypoint_sets:
             keypoints['uv'][:, :2] /= self.stride#DLAV
@@ -153,7 +153,7 @@ class AnnRescaler():
         factor = 1.0
 
         if self.pose is not None:
-            area_ref = (
+            area_ref = np.abs(
                 (np.max(self.pose[visible, 0]) - np.min(self.pose[visible, 0]))
                 * (np.max(self.pose[visible, 1]) - np.min(self.pose[visible, 1]))
                 * (np.max(self.pose[visible, 2]) - np.min(self.pose[visible, 2]))#DLAV
@@ -167,7 +167,7 @@ class AnnRescaler():
             #     self.pose_total_area / area_ref if area_ref > 0.1 else np.inf,
             #     self.pose_45_total_area / area_ref_45 if area_ref_45 > 0.1 else np.inf,
             # ))#DLAV
-            factor = np.sqrt(self.pose_total_area / area_ref if area_ref > 0.1 else np.inf)#DLAV
+            factor = np.sqrt(self.pose_total_area / area_ref if area_ref > 0.0316 else np.inf)#DLAV before was 0.1 for 2 dimensions so we put 0.1^(3/2) for 3 dimensions
             if np.isinf(factor):
                 return np.nan
 

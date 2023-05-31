@@ -362,15 +362,15 @@ class CompositeField4(HeadNetwork):
             classes_x = x[:, :, 1:1 + self.n_confidences]
             torch.sigmoid_(classes_x)
 
-            # regressions x: add index
-            if self.n_vectors > 0:
-                index_field = index_field_torch((feature_height, feature_width), device=x.device)
-                first_reg_feature = 1 + self.n_confidences
-                for i, do_offset in enumerate(self.vector_offsets):
-                    if not do_offset:
-                        continue
-                    reg_x = x[:, :, first_reg_feature + i * 3:first_reg_feature + (i + 1) * 3]#DLAV
-                    reg_x.add_(index_field)
+            # regressions x: add index# DLAV not relevant anymore as adding the index makes no more sense
+            # if self.n_vectors > 0:
+            #     index_field = index_field_torch((feature_height, feature_width), device=x.device)#WARNING !!!!!!!!!!!!!!!!!!!
+            #     first_reg_feature = 1 + self.n_confidences
+            #     for i, do_offset in enumerate(self.vector_offsets):
+            #         if not do_offset:
+            #             continue
+            #         reg_x = x[:, :, first_reg_feature + i * 3:first_reg_feature + (i + 1) * 3]#DLAV
+            #         reg_x.add_(index_field)
 
             # scale
             first_scale_feature = 1 + self.n_confidences + self.n_vectors * 3#DLAV

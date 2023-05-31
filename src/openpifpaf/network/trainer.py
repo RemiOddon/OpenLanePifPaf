@@ -6,6 +6,7 @@ import hashlib
 import logging
 import shutil
 import time
+# import tensorboardX
 
 import torch
 
@@ -59,6 +60,8 @@ class Trainer():
             'type': 'config',
             'field_names': self.loss.field_names,
         })
+
+        # self.train_writer=tensorboardX.SummaryWriter('/scratch/izar/oddon')
 
     @classmethod
     def cli(cls, parser: argparse.ArgumentParser):
@@ -292,6 +295,9 @@ class Trainer():
             batch_start = time.time()
             apply_gradients = batch_idx % self.stride_apply == 0
             loss, head_losses = self.train_batch(data, target, apply_gradients)
+
+            # self.train_writer.add_scalar('train total loss', loss, epoch*len(scenes)+batch_idx)
+            # self.train_writer.add_scalar('train head losses', head_losses)
 
             # update epoch accumulates
             if loss is not None:

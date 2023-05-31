@@ -109,7 +109,7 @@ class OpenlaneToCoco:
 
             for segment in os.listdir(paths_ann):
                 segment_json_files = os.listdir(os.path.join(paths_ann, segment))
-                segment_json_files = list(np.random.choice(segment_json_files, int( 0.2*len(segment_json_files) ))) # !!! keep 20% of images because of redondancy
+                segment_json_files = list(np.random.choice(segment_json_files, int( 0.15*len(segment_json_files)) )) #  !!! keep 15% of images because of redondancy
 
                 for json_file in segment_json_files:
                     path_json_file = os.path.join(paths_ann, segment, json_file)
@@ -128,7 +128,7 @@ class OpenlaneToCoco:
                     cnt_images += 1
 
                     for idx, lane in enumerate(data_json['lane_lines']):
-                        self._process_annotation(lane['xyz'], lane['visibility'], im_id, idx) # add annotations to json file
+                        self._process_annotation(lane['xyz'], lane['uv'], lane['visibility'], im_id, idx) # add annotations to json file
                         cnt_instances += 1
 
                     dst = os.path.join(self.dir_out_im, phase, os.path.split(path_im)[-1])
@@ -170,23 +170,32 @@ class OpenlaneToCoco:
             'height': height})
         return im_id
 
-    def _process_annotation(self, all_kps, vis, im_id, idx):
+    def _process_annotation(self, all_kps, all_uv, vis, im_id, idx):
         """Process single instance"""
 
-        kps = self._transform_keypoints(all_kps, vis)
+        # kps = self._transform_keypoints(all_kps, vis)
+        # all_uv=self._transform_keypoints(np.array(all_uv), vis, bool_xyz=False)
+
+        all_kps=np.array(all_kps).T
+        all_uv=np.array(all_uv).T
+
+        all_kps = np.hstack([all_kps[0].reshape((-1,1)), all_kps[-1].reshape((-1,1))])
+        all_uv = np.hstack([all_uv[0].reshape((-1,1)), all_uv[-1].reshape((-1,1))])
+        all_vis = np.hstack([vis[0], vis[-1]]) + 1
+
+        # kps = list(np.hstack([all_kps[0], 2 if vis[0]==1 else 1, all_kps[0], 2 if vis[0]==1 else 1]))
+        # uv = list(np.hstack([all_uv[0], 2, all_uv[0], 2]))
 
         # Enlarge box
-        box_tight = [np.min(kps[0, :]), np.min(kps[1, :]), np.min(kps[2, :]),
-                     np.max(kps[0, :]), np.max(kps[1, :]), np.max(kps[2, :])]
-        lx, ly, lz = box_tight[3] - box_tight[0], box_tight[4] - box_tight[1], box_tight[5] - box_tight[2]
+        box_tight = [np.min(all_uv[0, :]), np.min(all_uv[1, :]),
+                     np.max(all_uv[0, :]), np.max(all_uv[1, :])]
+        lx, ly = box_tight[2] - box_tight[0], box_tight[3] - box_tight[1]
         x_o = box_tight[0] - 0.1 * lx
         y_o = box_tight[1] - 0.1 * ly
-        z_o = box_tight[2] - 0.1 * lz
         x_i = box_tight[0] + 1.1 * lx
         y_i = box_tight[1] + 1.1 * ly
-        z_i = box_tight[2] + 1.1 * lz
 
-        box = [int(x_o), int(y_o), int(z_o), int(x_i - x_o), int(y_i - y_o), int(z_i - z_o)]  # (x, y, z, lx, ly, lz)
+        box = [int(x_o), int(y_o), int(x_i - x_o), int(y_i - y_o)]  # (x, y, lx, ly)
 
         lane_id = int(str(im_id) + str(idx))
         self.json_file["annotations"].append({
@@ -194,11 +203,14 @@ class OpenlaneToCoco:
             'category_id': 1,
             'iscrowd': 0,
             'id': lane_id,
-            'area': box[3] * box[4] * box[5],
+            'area': box[2] * box[3],
             'bbox': box,
             'num_keypoints': NUMBER_KEYPOINTS,
-            'keypoints': list(kps.T.reshape((-1,))),
-            'segmentation': []})
+            'keypoints': list(np.vstack([all_kps, all_vis]).T.reshape((-1,))),
+            'segmentation': [],
+            'uv' : list(np.vstack([all_uv, 2*np.ones((1, all_uv.shape[1]))]).T.reshape((-1,)))  })
+            #list(kps.T.reshape((-1,)))
+            #list(np.vstack([uv, 2*np.ones((1, uv.shape[1]))]).T.reshape((-1,)))
     
     def initiate_json(self):
         """
@@ -218,21 +230,31 @@ class OpenlaneToCoco:
         self.json_file["images"] = []
         self.json_file["annotations"] = []
 
-    def _transform_keypoints(self, kps, vis): # Get down/up sampled version of the keypoints, output has NUMBER_KEYPOINTS keypoints
+    def _transform_keypoints(self, kps, vis, bool_xyz=True): # Get down/up sampled version of the keypoints, output has NUMBER_KEYPOINTS keypoints
         kps = np.array(kps)
-        kps = kps[:, np.argsort(kps[0, :])]
+        if bool_xyz:
+            kps = kps[:, np.argsort(kps[0, :])]
+        else:
+            kps = kps[:, np.flip(np.argsort(kps[1, :]))]    # WARNING verifier !!!!! que le tri en uv est bon
         dist_inter_kp = np.linalg.norm(kps[:, :-1] - kps[:, 1:], axis=0)
         cumdist_inter_kp = np.hstack([[0], dist_inter_kp.cumsum()])
-        dist_incr = cumdist_inter_kp[-1]/(NUMBER_KEYPOINTS+1)
-        new_kps=np.zeros((4, NUMBER_KEYPOINTS))
+        dist_incr = cumdist_inter_kp[-1]/(NUMBER_KEYPOINTS-1)
+        new_kps=np.zeros((4 if bool_xyz else 2, NUMBER_KEYPOINTS))
 
         for i in range(NUMBER_KEYPOINTS):
-            dist = (i+1) * dist_incr
+            dist = i * dist_incr
             for j in range(len(cumdist_inter_kp)):
-                if dist < cumdist_inter_kp[j]:
+                if dist == 0:
+                    print(kps.shape)
+                    new_kps[:(3 if bool_xyz else 2), i] = kps[:, i]
+
+                    if bool_xyz:
+                        new_kps[3, i] = 2 if vis[i] == 1 else 1
+                elif dist <= cumdist_inter_kp[j]:
                     alpha = (dist - cumdist_inter_kp[j-1]) / dist_inter_kp[j-1]
-                    new_kps[:3, i] = (1-alpha) * kps[:, j-1] + alpha * kps[:, j]
-                    new_kps[3, i] = 1 if vis[j-1]==1 and vis[j]==1 else 0
+                    new_kps[:(3 if bool_xyz else 2), i] = (1-alpha) * kps[:, j-1] + alpha * kps[:, j]
+                    if bool_xyz:
+                        new_kps[3, i] = 2 if vis[j-1]==1 and vis[j]==1 else 1
                     break
         return new_kps
 

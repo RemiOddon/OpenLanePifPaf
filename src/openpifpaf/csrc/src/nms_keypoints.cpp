@@ -35,10 +35,10 @@ void NMSKeypoints::call(Occupancy* occupancy, std::vector<Annotation>* annotatio
             f++;
             if (f >= n_occupancy) break;
             if (joint.v == 0.0) continue;
-            if (occupancy->get(f, joint.x, joint.y)) {
+            if (occupancy->get(f, joint.x, joint.y, joint.z)) {//DLAV
                 joint.v *= suppression;
             } else {
-                occupancy->set(f, joint.x, joint.y, joint.s);  // joint.s = 2 * sigma
+                occupancy->set(f, joint.x, joint.y, joint.z, joint.s);  // joint.s = 2 * sigma//DLAV
             }
         }
     }

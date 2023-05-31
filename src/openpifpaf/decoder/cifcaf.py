@@ -264,14 +264,14 @@ class CifCaf(Decoder):
             ann = Annotation(self.cif_metas[0].keypoints,
                              self.caf_metas[0].skeleton,
                              score_weights=self.score_weights)
-            ann.data[:, :2] = ann_data[:, 1:3]
-            ann.data[:, 2] = ann_data[:, 0]
-            ann.joint_scales[:] = ann_data[:, 3]
+            ann.data[:, :3] = ann_data[:, 1:4]#DLAV
+            ann.data[:, 3] = ann_data[:, 0]#DLAV
+            ann.joint_scales[:] = ann_data[:, 4]#DLAV
             if ann_id != -1:
                 ann.id_ = int(ann_id)
             annotations_py.append(ann)
 
         LOG.info('annotations %d: %s',
                  len(annotations_py),
-                 [np.sum(ann.data[:, 2] > 0.1) for ann in annotations_py])
+                 [np.sum(ann.data[:, 3] > 0.1) for ann in annotations_py])#DLAV
         return annotations_py

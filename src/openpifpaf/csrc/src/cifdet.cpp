@@ -43,7 +43,7 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> CifDet::call(
     occupancy.reset(cifDetHr_accumulated.sizes());
 
     int64_t f;
-    float c, x, y, w, h;
+    float c, x, y, z, w, h;
     std::vector<int64_t> categories;
     std::vector<float> scores;
     std::vector<BBox> boxes;
@@ -52,11 +52,12 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> CifDet::call(
         c = seeds_vxywh_a[seed_i][0];
         x = seeds_vxywh_a[seed_i][1];
         y = seeds_vxywh_a[seed_i][2];
-        w = seeds_vxywh_a[seed_i][3];
-        h = seeds_vxywh_a[seed_i][4];
-        if (occupancy.get(f, x, y)) continue;
+        z = seeds_vxywh_a[seed_i][3];//DLAV
+        w = seeds_vxywh_a[seed_i][4];//DLAV
+        h = seeds_vxywh_a[seed_i][5];//DLAV
+        if (occupancy.get(f, x, y, z)) continue;//DLAV
 
-        occupancy.set(f, x, y, 0.1 * fmin(w, h));
+        occupancy.set(f, x, y, z, 0.1 * fmin(w, h));
         categories.push_back(f + 1);
         scores.push_back(c);
         boxes.push_back({ x - 0.5f * w, y - 0.5f * h, x + 0.5f * w, y + 0.5f * h });

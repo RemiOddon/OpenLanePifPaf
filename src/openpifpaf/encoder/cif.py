@@ -84,9 +84,7 @@ class CifGenerator():
 
     def fill_keypoints(self, keypoints):
         scale = self.rescaler.scale(keypoints['xyz'])#DLAV
-        # print(keypoints)
         for f, (xyz, uv) in enumerate(zip(keypoints['xyz'], keypoints['uv'])):#DLAV
-            # print(type(kps), kps)
             if uv[2] <= self.config.v_threshold:#DLAVnop
                 continue
 
@@ -139,21 +137,23 @@ class CifGenerator():
            miny < 0 or maxy > self.intensities.shape[1]:#DLAV
             return
 
-        s=self.config.side_length#DLAV
-        center_mask=np.zeros((s, s), dtype=bool)#DLAV
-        center_mask[[int(s/2-1), int(s/2-1), int(s/2), int(s/2)] if s%2==0 else [int((s-1)/2)], [int(s/2-1), int(s/2), int(s/2-1), int(s/2)] if s%2==0 else [int((s-1)/2)]]=True  #DLAV
+        offset = uvv[:2] - (ij + self.s_offset - self.config.padding) # offset entre xy réel et xy discrétiser
+        offset = offset.reshape(2, 1, 1) 
+
+         # mask
+        sink_reg = self.sink + offset
+        sink_l = np.linalg.norm(sink_reg, axis=0)
+        mask = sink_l < self.fields_reg_l[f, miny:maxy, minx:maxx]
+        self.fields_reg_l[f, miny:maxy, minx:maxx][mask] = sink_l[mask]
+
         # update intensity
-        self.intensities[f, miny:maxy, minx:maxx]=1.0#DLAV
+        self.intensities[f, miny:maxy, minx:maxx][mask]=1.0#DLAV
         # update regression
-        self.fields_reg[f, :, miny:maxy, minx:maxx]=xyz[:3].reshape(3,1,1).repeat(self.config.side_length, axis=2).repeat(self.config.side_length, axis=1)#DLAV
+        self.fields_reg[f, :, miny:maxy, minx:maxx][:, mask]=xyz[:3].reshape(3,1,1).repeat(self.config.side_length, axis=2).repeat(self.config.side_length, axis=1)[:, mask]#DLAV
         # update bmin
-        self.fields_bmin[f, miny:maxy, minx:maxx]=self.config.bmin / self.config.meta.stride#DLAV
+        self.fields_bmin[f, miny:maxy, minx:maxx][mask]=self.config.bmin / self.config.meta.stride#DLAV
         # update scale
-        self.fields_scale[f, miny:maxy, minx:maxx] = scale#DLAV
-        # update fields_reg_l
-        self.fields_reg_l[f, miny:maxy, minx:maxx][center_mask] = 0.9*self.fields_reg_l[f, miny:maxy, minx:maxx][center_mask]#DLAV
-        center_inf_mask=np.logical_and(center_mask, np.isinf(self.fields_reg_l[f, miny:maxy, minx:maxx]))#DLAV
-        self.fields_reg_l[f, miny:maxy, minx:maxx][center_inf_mask] = 1#DLAV
+        self.fields_scale[f, miny:maxy, minx:maxx][mask] = scale#DLAV
 
     def fields(self, valid_area):
         p = self.config.padding

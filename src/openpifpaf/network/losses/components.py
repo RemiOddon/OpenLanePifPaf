@@ -271,7 +271,7 @@ class Regression(Base):
         t_scales = t_scales.clone()
         invalid_t_scales = torch.isnan(t_scales)
         t_scales[invalid_t_scales] = \
-            torch.nn.functional.softplus(x_scales.detach()[invalid_t_scales])
+            torch.nn.functional.softplus(x_scales.detach()[invalid_t_scales])+0.01 #DLAV added 0.01 to prevent 0 values of t_scales because we invert it later (for example : 1/softplus(-100)=inf)
 
         d = x_regs - t_regs
         t_sigma_min_imputed = t_sigma_min.clone()
@@ -284,9 +284,10 @@ class Regression(Base):
         # 68% inside of t_sigma
         t_sigma = self.sigma_from_scale * t_scales
         l = 1.0 / t_sigma * d
-
+        assert torch.all(torch.isfinite(l))
         if self.soft_clamp is not None:
             l = self.soft_clamp(l)
+        assert torch.all(torch.isfinite(l))
 
         # uncertainty modification
         x_logs2 = x_all[:, :, :, :, 0:1][reg_mask]

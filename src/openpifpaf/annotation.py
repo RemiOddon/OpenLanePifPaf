@@ -24,7 +24,7 @@ class Annotation(Base):
         self.suppress_score_index = suppress_score_index
 
         self.category_id = 1
-        self.data = np.zeros((len(keypoints), 3), dtype=np.float32)
+        self.data = np.zeros((len(keypoints), 4), dtype=np.float32)#DLAV 3->4
         self.joint_scales = np.zeros((len(keypoints),), dtype=np.float32)
         self.fixed_score = None
         self.fixed_bbox = None
@@ -100,7 +100,7 @@ class Annotation(Base):
         if self.fixed_score is not None:
             return self.fixed_score
 
-        v = self.data[:, 2]
+        v = self.data[:, 3]#DLAV
         if self.suppress_score_index is not None:
             v = np.copy(v)
             v[self.suppress_score_index] = 0.0
@@ -110,12 +110,13 @@ class Annotation(Base):
         return np.sum(self.score_weights * np.sort(v)[::-1])
 
     def scale(self, v_th=0.5):
-        m = self.data[:, 2] > v_th
+        m = self.data[:, 3] > v_th #DLAV 2->3 for confidence
         if not np.any(m):
             return 0.0
         return max(
             np.max(self.data[m, 0]) - np.min(self.data[m, 0]),
             np.max(self.data[m, 1]) - np.min(self.data[m, 1]),
+            np.max(self.data[m, 2]) - np.min(self.data[m, 2])#DLAV
         )
 
     def json_data(self, coordinate_digits=2):

@@ -41,11 +41,11 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
     debug = False
     pin_memory = False
 
-    train_annotations = '/home/oddon/data-openlane2/annotations/openlane_keypoints_training.json'
-    val_annotations = '/home/oddon/data-openlane2/annotations/openlane_keypoints_validation.json'
+    train_annotations = '/home/oddon/data-openlane/annotations/openlane_keypoints_training.json'
+    val_annotations = '/home/oddon/data-openlane/annotations/openlane_keypoints_validation.json'
     eval_annotations = val_annotations
-    train_image_dir = '/home/oddon/data-openlane2/images/training/'
-    val_image_dir = '/home/oddon/data-openlane2/images/validation/'
+    train_image_dir = '/home/oddon/data-openlane/images/training/'
+    val_image_dir = '/home/oddon/data-openlane/images/validation/'
     eval_image_dir = val_image_dir
 
     n_images = None
@@ -63,6 +63,8 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
     eval_long_edge = 0  # set to zero to deactivate rescaling
     eval_orientation_invariant = 0.0
     eval_extended_scale = False
+
+    shuffle=True
 
     # lane-specific configuration
     hflip = HFLIP
@@ -156,6 +158,10 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
                            dest='openlane_apply_local_centrality',
                            default=False, action='store_true',
                            help='Weigh the CIF and CAF head during training.')
+        group.add_argument('--no-shuffle',
+                           dest='shuffle',
+                           default=cls.shuffle, action='store_false',
+                           help='Deactivate sample shuffling')
 
         # evaluation
         assert cls.eval_annotation_filter
@@ -201,6 +207,7 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
             cls.weights = training_weights_local_centrality
         else:
             cls.weights = None
+        cls.shuffle=args.shuffle
 
     def _preprocess(self):
         encoders = (openpifpaf.encoder.Cif(self.head_metas[0], bmin=self.b_min),
@@ -229,18 +236,18 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
         return openpifpaf.transforms.Compose([
             openpifpaf.transforms.NormalizeAnnotations(),
             # openpifpaf.transforms.AnnotationJitter(),
-            openpifpaf.transforms.RandomApply(
-                openpifpaf.transforms.HFlip(self.lane_keypoints, self.hflip), 0.5),
+            # openpifpaf.transforms.RandomApply(
+            #     openpifpaf.transforms.HFlip(self.lane_keypoints, self.hflip), 0.5),
             rescale_t,
             openpifpaf.transforms.RandomApply(openpifpaf.transforms.Blur(), self.blur),
-            openpifpaf.transforms.RandomChoice(
-                [openpifpaf.transforms.RotateBy90(),
-                 openpifpaf.transforms.RotateUniform(30.0)],
-                [self.orientation_invariant, 0.2],
-            ),
+            # openpifpaf.transforms.RandomChoice(
+            #     [openpifpaf.transforms.RotateBy90(),
+            #      openpifpaf.transforms.RotateUniform(30.0)],
+            #     [self.orientation_invariant, 0.2],
+            # ),
             # openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),   #DLAV don't use crop cause we do not know the area of interest in image since we only have 3D keypoints
             openpifpaf.transforms.CenterPad(self.square_edge),
-            openpifpaf.transforms.MinSize(min_side=32.0),
+            # openpifpaf.transforms.MinSize(min_side=32.0),
             openpifpaf.transforms.TRAIN_TRANSFORM,
             openpifpaf.transforms.Encoders(encoders),
         ])
@@ -255,7 +262,7 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
             category_ids=[1],
         )
         return torch.utils.data.DataLoader(
-            train_data, batch_size=self.batch_size, shuffle=not self.debug,
+            train_data, batch_size=self.batch_size, shuffle=self.shuffle,
             pin_memory=self.pin_memory, num_workers=self.loader_workers, drop_last=True,
             collate_fn=openpifpaf.datasets.collate_images_targets_meta)
 
@@ -347,4 +354,4 @@ class OpenlaneKp(openpifpaf.datasets.DataModule):
             category_ids=[1],
             iou_type='keypoints',
             keypoint_oks_sigmas=self.lane_sigmas,
-        ), MeanPixelError()]
+        )]#, MeanPixelError()
