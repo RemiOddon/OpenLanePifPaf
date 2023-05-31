@@ -1,3 +1,9 @@
+# OpenLanePifPaf
+
+[Video presentation](https://youtu.be/PmMTP3SOauc)<br />
+3D-Lane Detection, Group 17, Oliver Colombini-Ljungberg 309996, Rémi Oddon 31296<br />
+EPFL, CIVIL-459, Deep Learning for Autonomous Vehicles
+
 # Original publications 
 
 &nbsp;&nbsp;&nbsp;&nbsp;This github page is a fork of [OpenPifPaf](https://github.com/openpifpaf/openpifpaf), and is based on their publications.<br />
@@ -45,7 +51,7 @@ pip3 install --editable 'OpenLanePifpaf/[dev,train,test]'
 pip3 uninstall -y pycocotools
 pip3 install --editable OpenLanePifpaf/pycocotools-2.0.4/
 ```
-Note that you may have depending on your machine to uninstall urllib3 and reinstall it with the version 1.26.15.
+Note that you may have depending on your machine to uninstall urllib3 and reinstall it with the version 1.26.15. Then clone [DIFFNet](https://github.com/brandleyzhou/DIFFNet.git) in __OpenLanePifPaf/src/openpifpaf/network__ and move __depth_net.py__ directly inside it.
 
 
 # Dataset
